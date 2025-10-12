@@ -1,0 +1,15 @@
+pandas 
+scikit-learn 
+tensorflow==2.15.0
+numpy 
+requests
+keras
+tensorboard
+matplotlib
+flask
+Flask-Cors
+Pillow
+openai
+google.generativeai
+groq
+python-dotenv

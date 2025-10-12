@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Farm Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #e0f2fe; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1rem; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); padding: 1.5rem; }
+        .loader { border: 5px solid rgba(0,0,0,0.1); border-top: 5px solid #22c55e; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #voice-fab { position: fixed; bottom: 2rem; right: 2rem; background-color: #22c55e; color: white; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(34, 197, 94, 0.4); cursor: pointer; transition: all 0.3s ease; z-index: 100; }
+        #voice-fab:hover { transform: scale(1.1); }
+        #voice-modal { position: fixed; bottom: 0; left: 0; right: 0; background-color: rgba(0,0,0,0.85); color: white; padding: 2rem; text-align: center; transform: translateY(100%); transition: transform 0.4s ease-in-out; z-index: 50; }
+        #voice-modal.active { transform: translateY(0); }
+        .hindi-example { font-family: 'Noto Sans Devanagari', sans-serif; }
+    </style>
+</head>
+<body class="text-gray-800">
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="relative container mx-auto p-4 md:p-6 max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800">Digital Farm Journal</h1>
+            <p class="text-gray-600 mt-2" id="current-date">Loading date...</p>
+        </header>
+
+        <main>
+            <div id="dashboard-loader" class="flex flex-col justify-center items-center h-80 text-gray-700">
+                <div class="loader"></div>
+                <p class="mt-4 font-medium">Preparing Your Daily Journal...</p>
+                <p id="location-status" class="text-sm mt-1">Requesting location access...</p>
+            </div>
+            
+            <div id="dashboard-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                     <div class="card">
+                        <h2 class="text-2xl font-bold mb-4 text-green-700 flex items-center"><span class="text-3xl mr-3">📖</span> Daily Journal & Tasks</h2>
+                        <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg mb-4">
+                            <div>
+                                <p class="text-gray-600">Weather in <span id="city-name" class="font-semibold">...</span></p>
+                                <p class="text-xl font-bold" id="weather-description">Loading...</p>
+                            </div>
+                            <p class="text-4xl font-bold text-blue-600" id="temperature">--°C</p>
+                        </div>
+                        <div id="advisory-list" class="space-y-2 text-gray-700"></div>
+                     </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="card">
+                        <h2 class="text-xl font-bold mb-4 text-green-700"><span class="mr-2">🤖</span> AI Recommendations</h2>
+                        <div class="space-y-4">
+                           <div class="bg-green-50 p-3 rounded-lg">
+                                <p class="font-medium text-green-800 text-sm">Recommended Crop</p>
+                                <p class="text-2xl font-bold text-green-600" id="rec-crop">...</p>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded-lg">
+                                <p class="font-medium text-yellow-800 text-sm">Recommended Fertilizer</p>
+                                <p class="text-2xl font-bold text-yellow-600" id="rec-fertilizer">...</p>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="card">
+                        <h2 class="text-xl font-bold mb-4 text-green-700"><span class="mr-2">🔬</span> Soil Health</h2>
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div><label for="n-input" class="block text-xs font-medium text-gray-700">N</label><input type="number" id="n-input" placeholder="90" class="mt-1 block w-full rounded-md border-gray-300 p-2 text-sm"></div>
+                            <div><label for="p-input" class="block text-xs font-medium text-gray-700">P</label><input type="number" id="p-input" placeholder="45" class="mt-1 block w-full rounded-md border-gray-300 p-2 text-sm"></div>
+                            <div><label for="k-input" class="block text-xs font-medium text-gray-700">K</label><input type="number" id="k-input" placeholder="45" class="mt-1 block w-full rounded-md border-gray-300 p-2 text-sm"></div>
+                        </div>
+                        <button id="soil-submit-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Personalize Advice</button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 card">
+                     <h2 class="text-2xl font-bold text-center mb-4 text-green-700">🌿 Pest & Disease Detection</h2>
+                     <div class="max-w-xl mx-auto text-center">
+                         <input type="file" id="image-upload" accept="image/*" class="hidden">
+                         <button onclick="document.getElementById('image-upload').click()" class="w-full bg-green-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-green-700 text-lg">Upload Leaf Image for AI Scan</button>
+                         <div id="detection-section" class="mt-6 hidden grid md:grid-cols-2 gap-6 items-center">
+                             <div id="image-preview-container"><img id="image-preview" src="#" class="max-w-full h-auto mx-auto rounded-lg shadow-md max-h-64"/></div>
+                             <div id="detection-result" class="text-left">
+                                 <div id="result-loader" class="hidden"><div class="loader mx-auto"></div></div>
+                                 <div id="result-content" class="hidden p-4 bg-gray-50 rounded-lg space-y-2">
+                                     <h4 class="font-bold text-lg mb-2">Analysis Result:</h4>
+                                     <!-- <p><strong>Condition:</strong> <span id="result-condition"></span></p> -->
+                                     <p><strong>Confidence:</strong> <span id="result-confidence"></span></p>
+                                     <p class="mt-2"><strong>Suggestion:</strong> <span id="result-remedy"></span></p>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="voice-fab"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 8v2a.5.5 0 01-1 0V8a.5.5 0 01.5-.5zM14 8a.5.5 0 00-1 0v2a.5.5 0 001 0V8z" /><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM2 10a8 8 0 1116 0 8 8 0 01-16 0z" /></svg></div>
+    <div id="voice-modal">
+        <p id="voice-status" class="text-2xl font-medium">Hi! How can I help?</p>
+        <p class="mt-2 text-gray-400">Try saying in Hindi: "<span class="hindi-example">गेहूं की फसल के लिए सबसे अच्छा उर्वरक कौन सा है?</span>"</p>
+    </div>
+
+    <script>
+        // --- 3D Background (Unchanged) ---
+        const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight); const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 1); directionalLight.position.set(5, 10, 7.5); scene.add(directionalLight); camera.position.set(0, 2, 5); camera.lookAt(0, 2, 0); const groundGeo = new THREE.PlaneGeometry(20, 20); const groundMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 1 }); const ground = new THREE.Mesh(groundGeo, groundMat); ground.rotation.x = -Math.PI / 2; scene.add(ground); const plantGroup = new THREE.Group(); const stemMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.8 }); const stemGeo = new THREE.CylinderGeometry(0.05, 0.1, 3, 8); const stem = new THREE.Mesh(stemGeo, stemMat); stem.position.y = 1.5; plantGroup.add(stem); const leafGeo = new THREE.CircleGeometry(0.8, 8); const leafMat = new THREE.MeshStandardMaterial({ color: 0x8BC34A, side: THREE.DoubleSide }); const leaf1 = new THREE.Mesh(leafGeo, leafMat); leaf1.position.set(-0.5, 2, 0); leaf1.rotation.y = Math.PI / 4; plantGroup.add(leaf1); const leaf2 = new THREE.Mesh(leafGeo, leafMat); leaf2.position.set(0.5, 1.5, 0); leaf2.rotation.y = -Math.PI / 4; plantGroup.add(leaf2); scene.add(plantGroup); plantGroup.scale.set(0,0,0); const clock = new THREE.Clock(); function animate() { requestAnimationFrame(animate); const elapsedTime = clock.getElapsedTime(); if (plantGroup.scale.x < 1) { const scale = Math.min(plantGroup.scale.x + 0.005, 1); plantGroup.scale.set(scale, scale, scale); } plantGroup.rotation.z = Math.sin(elapsedTime * 0.5) * 0.05; renderer.render(scene, camera); } animate(); window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+        // --- Application Logic (GROQ UPGRADE APPLIED HERE) ---
+        const API_BASE_URL = 'http://127.0.0.1:5000'; 
+        let userCoords = { lat: 23.0225, lon: 72.5714 };
+
+        const allDOMElements = {
+            dashboardLoader: document.getElementById('dashboard-loader'), dashboardContent: document.getElementById('dashboard-content'), locationStatus: document.getElementById('location-status'), currentDate: document.getElementById('current-date'), imageUpload: document.getElementById('image-upload'), detectionSection: document.getElementById('detection-section'), imagePreview: document.getElementById('image-preview'), resultLoader: document.getElementById('result-loader'), resultContent: document.getElementById('result-content'), voiceFab: document.getElementById('voice-fab'), voiceModal: document.getElementById('voice-modal'), voiceStatus: document.getElementById('voice-status')
+        };
+        const translations = { 'Maize': 'मक्का', 'Rice': 'चावल', 'Cotton': 'कपास', 'Groundnut': 'मूंगफली', 'Wheat': 'गेहूं', 'Urea': 'यूरिया', 'DAP': 'डीएपी' };
+        const translate = (text) => translations[text] || text;
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        if (SpeechRecognition) { recognition = new SpeechRecognition(); recognition.lang = 'hi-IN'; } 
+        else { if (allDOMElements.voiceFab) allDOMElements.voiceFab.style.display = 'none'; }
+
+        function speak(text) {
+             if ('speechSynthesis' in window) { speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'hi-IN'; speechSynthesis.speak(utterance); }
+        }
+
+        function getAdvisory(lat, lon, soilData = null) {
+             const payload = { lat, lon, ...soilData };
+             fetch(`${API_BASE_URL}/api/advisory`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)})
+             .then(res => res.ok ? res.json() : Promise.reject(res))
+             .then(updateDashboard).catch(handleFetchError);
+        }
+        
+        function updateDashboard(data) {
+            document.getElementById('city-name').textContent = data.weather.city; document.getElementById('weather-description').textContent = data.weather.description; document.getElementById('temperature').textContent = `${Math.round(data.weather.temperature)}°C`; document.getElementById('rec-crop').textContent = data.recommendations.crop; document.getElementById('rec-fertilizer').textContent = data.recommendations.fertilizer;
+            const advisoryList = document.getElementById('advisory-list'); advisoryList.innerHTML = '';
+            [...data.advisory.calendar, ...data.advisory.alerts].forEach(item => { const li = document.createElement('div'); li.className = 'flex items-start'; li.innerHTML = `<span class="font-bold text-green-600 mr-2 mt-1">✓</span><p>${item}</p>`; advisoryList.appendChild(li); });
+            allDOMElements.dashboardLoader.classList.add('hidden'); allDOMElements.dashboardContent.classList.remove('hidden');
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = e => { allDOMElements.imagePreview.src = e.target.result; allDOMElements.detectionSection.classList.remove('hidden'); allDOMElements.resultContent.classList.add('hidden'); allDOMElements.resultLoader.classList.remove('hidden'); detectDisease(file); };
+            reader.readAsDataURL(file);
+        }
+
+        function detectDisease(file) {
+            const formData = new FormData(); formData.append('file', file);
+            fetch(`${API_BASE_URL}/api/detect_disease`, { method: 'POST', body: formData })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(data => {  document.getElementById('result-confidence').textContent = data.confidence; document.getElementById('result-remedy').textContent = data.remedy; })
+            .catch(error => { document.getElementById('result-remedy').textContent = 'Could not analyze image. Please try again.'; })
+            .finally(() => { allDOMElements.resultLoader.classList.add('hidden'); allDOMElements.resultContent.classList.remove('hidden'); });
+        }
+
+        function handleFetchError(error) {
+            console.error('Fetch Error:', error);
+            allDOMElements.dashboardLoader.innerHTML = `<div class="text-center p-4 bg-red-100/50 rounded-lg"><p class="font-bold text-red-700">Connection Error</p><p class="text-red-600">Could not connect to the backend server. Please ensure the 'app.py' script is running.</p></div>`;
+        }
+        
+        // ⭐ NEW: FUNCTION TO ASK GROQ GENERAL QUESTIONS ⭐
+        function askGroq(question) {
+            fetch(`${API_BASE_URL}/api/ask_groq`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question })
+            })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(data => {
+                const answer = data.answer || "I couldn't find an answer to that.";
+                allDOMElements.voiceStatus.textContent = answer; // Show the answer on screen
+                speak(answer); // Speak the answer
+            })
+            .catch(error => {
+                const errorMsg = "Sorry, I'm having trouble connecting to my brain right now.";
+                allDOMElements.voiceStatus.textContent = errorMsg;
+                speak(errorMsg);
+            });
+        }
+
+        // ⭐ UPDATED: VOICE COMMANDS NOW USE GROQ AS A FALLBACK ⭐
+        function processVoiceCommand(transcript) {
+            allDOMElements.voiceStatus.textContent = `You said (in Hindi): "${transcript}"`;
+            let textToRead = '';
+            let commandHandled = false;
+            
+            if (transcript.includes('सब कुछ') || transcript.includes('पूरी जानकारी')) {
+                 const crop = document.getElementById('rec-crop').textContent; const fertilizer = document.getElementById('rec-fertilizer').textContent; const alerts = [...document.querySelectorAll('#advisory-list p')].map(p => p.textContent).join('. ');
+                 textToRead = `आज की पूरी जानकारी: सुझाई गई फसल ${translate(crop)} है. सुझाया गया उर्वरक ${translate(fertilizer)} है. ${alerts}`;
+                 commandHandled = true;
+            } else if (transcript.includes('मौसम')) {
+                const temp = document.getElementById('temperature').textContent; const desc = document.getElementById('weather-description').textContent;
+                textToRead = `आज का मौसम ${desc} है और तापमान ${temp} है।`;
+                commandHandled = true;
+            } else if (transcript.includes('फसल')) {
+                const crop = document.getElementById('rec-crop').textContent;
+                textToRead = `सुझाई गई फसल ${translate(crop)} है।`;
+                commandHandled = true;
+            } else if (transcript.includes('खाद') || transcript.includes('उर्वरक')) {
+                const fertilizer = document.getElementById('rec-fertilizer').textContent;
+                textToRead = `सुझाया गया उर्वरक ${translate(fertilizer)} है।`;
+                commandHandled = true;
+            } else if (transcript.includes('अलर्ट') || transcript.includes('कार्य')) {
+                const alerts = [...document.querySelectorAll('#advisory-list p')].map(p => p.textContent).join('. ');
+                textToRead = `आज के कार्य और अलर्ट हैं: ${alerts}`;
+                commandHandled = true;
+            }
+            
+            if (commandHandled) {
+                setTimeout(() => speak(textToRead), 500);
+            } else {
+                // If no specific command was found, treat it as a general question for Groq
+                allDOMElements.voiceStatus.textContent = "Thinking about your question...";
+                askGroq(transcript);
+            }
+        }
+
+        // --- Event Listeners (Unchanged) ---
+        window.addEventListener('load', () => {
+            allDOMElements.currentDate.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => { allDOMElements.locationStatus.textContent = 'Location found! Getting your personalized data...'; userCoords = { lat: position.coords.latitude, lon: position.coords.longitude }; getAdvisory(userCoords.lat, userCoords.lon); }, 
+                    () => { allDOMElements.locationStatus.textContent = 'Location access denied. Showing data for Ahmedabad.'; getAdvisory(userCoords.lat, userCoords.lon); }
+                );
+            } else { allDOMElements.locationStatus.textContent = 'Geolocation not supported. Showing data for Ahmedabad.'; getAdvisory(userCoords.lat, userCoords.lon); }
+        });
+        document.getElementById('soil-submit-btn').addEventListener('click', () => {
+            const n = document.getElementById('n-input').value; const p = document.getElementById('p-input').value; const k = document.getElementById('k-input').value;
+            if (n && p && k) { alert('Updating recommendations with your soil data!'); getAdvisory(userCoords.lat, userCoords.lon, { n: parseInt(n), p: parseInt(p), k: parseInt(k) }); } 
+            else { alert('Please fill in all three N, P, and K values.'); }
+        });
+        allDOMElements.imageUpload.addEventListener('change', handleImageUpload);
+        if(recognition) {
+             allDOMElements.voiceFab.addEventListener('click', () => { allDOMElements.voiceModal.classList.add('active'); allDOMElements.voiceStatus.textContent = "Listening..."; recognition.start(); });
+            recognition.onresult = (event) => processVoiceCommand(event.results[0][0].transcript);
+            recognition.onerror = (event) => { allDOMElements.voiceStatus.textContent = "Error: " + event.error; };
+            recognition.onend = () => { setTimeout(() => allDOMElements.voiceModal.classList.remove('active'), 2500); };
+        }
+    </script>
+</body>
+</html>
