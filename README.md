@@ -42,26 +42,6 @@ and predicts the **most suitable crop**.
 - **Visualization (optional):** Matplotlib, Seaborn  
 - **Model Type:** Supervised Machine Learning  
 
----
-
-## 📂 Project Structure
-
-Crop-Recommendation/
-│
-├── data/
-│ └── crop_data.csv
-│
-├── notebooks/
-│ └── Crop_Recommendation.ipynb
-│
-├── src/
-│ ├── data_preprocessing.py
-│ ├── model_training.py
-│ └── prediction.py
-│
-├── requirements.txt
-└── README.md
-
 
 ---
 
